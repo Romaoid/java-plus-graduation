@@ -10,6 +10,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: none
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-stat.sql
 
 main-server:
   url: main-service
