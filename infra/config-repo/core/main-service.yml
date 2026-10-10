@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://ewm-db:5432/ewm-main
+    username: main
+    password: main
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-main.sql
+
+client:
+  url: stats-server
+
+stats:
+  service:
+    id: stats-server
+  retry:
+    max-attempts: 3
+    backoff-ms: 3000
+
+server:
+  port: 0
+

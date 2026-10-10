@@ -1,0 +1,5 @@
+logging:
+  level:
+    ru.yandex.practicum.telemetry: WARN
+    org:
+      springframework: ERROR
