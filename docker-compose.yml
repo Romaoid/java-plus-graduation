@@ -1,14 +1,196 @@
 services:
-  stats-server:
+
+  # ============================================================
+  # 1. EUREKA (discovery-server) — стартует первым
+  # ============================================================
+  discovery-server:
+    build:
+      context: ./infra
+      dockerfile: discovery-server/Dockerfile
+    container_name: discovery-server
     ports:
-      - "9090:9090"
+      - "8761:8761"                    # фиксированный порт — нужен для UI
+    environment:
+      - SPRING_APPLICATION_NAME=discovery-server
+      - SERVER_PORT=8761
+      # Eureka сам себя не регистрирует и не тянет реестр
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
+    networks:
+      - ewm-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
 
-  stats-db:
-    image: postgres:16.1
+  # ============================================================
+  # 2. CONFIG-SERVER — на случайном порту, регистрируется в Eureka
+  # ============================================================
+  config-server:
+    build: #./infra/config-server
+      context: ./infra
+      dockerfile: config-server/Dockerfile
+    container_name: config-server
+    depends_on:
+      discovery-server:
+        condition: service_healthy          # ждём, пока Eureka поднимется
+    environment:
+      - SPRING_APPLICATION_NAME=config-server
+      - SERVER_PORT=0                       # случайный порт
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      # ВАЖНО: чтобы Eureka регистрировала реальный IP контейнера, а не hostname
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - EUREKA_INSTANCE_HOSTNAME=config-server
+    networks:
+      - ewm-network
+    # никаких ports: — порт случайный, доступ только через Eureka
+    restart: unless-stopped
 
-  ewm-service:
+  # ============================================================
+  # 3. GATEWAY-SERVER — на 8080, регистрируется в Eureka, тянет конфиг
+  # ============================================================
+  gateway-server:
+    build:
+      context: ./infra
+      dockerfile: gateway-server/Dockerfile
+    container_name: gateway-server
     ports:
       - "8080:8080"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+    environment:
+      - SPRING_APPLICATION_NAME=gateway-server
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - EUREKA_INSTANCE_HOSTNAME=gateway-server
+      # Config Server берётся из Eureka по имени сервиса
+      - SPRING_CLOUD_CONFIG_DISCOVERY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_DISCOVERY_SERVICE_ID=config-server
+    networks:
+      - ewm-network
+    restart: unless-stopped
+
+  # ============================================================
+  # 4. БАЗЫ ДАННЫХ
+  # ============================================================
+  stats-db:
+    image: postgres:16.1
+    container_name: postgres-ewm-stats-db
+    ports:
+      - "6542:5432"
+    environment:
+      - POSTGRES_USER=stat
+      - POSTGRES_PASSWORD=stat
+      - POSTGRES_DB=ewm-stats
+    volumes:
+      - stats-db-data:/var/lib/postgresql/data/
+      - ./stat/stat-server/src/main/resources/schema-stat.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stat -d ewm-stats"]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    networks:
+      - ewm-network
+    restart: on-failure
 
   ewm-db:
     image: postgres:16.1
+    container_name: postgres-ewm-main-db
+    ports:
+      - "6541:5432"
+    environment:
+      - POSTGRES_USER=main
+      - POSTGRES_PASSWORD=main
+      - POSTGRES_DB=ewm-main
+    volumes:
+      - ewm-db-data:/var/lib/postgresql/data/
+      - ./core/main-service/src/main/resources/schema-main.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U main -d ewm-main"]
+      timeout: 5s
+      interval: 5s
+      retries: 10
+    networks:
+      - ewm-network
+    restart: on-failure
+
+  # ============================================================
+  # 5. STATS-SERVER — на случайном порту, регистрируется в Eureka
+  # ============================================================
+  stats-server:
+    build: ./stat/stat-server
+    container_name: stats-server
+    depends_on:
+      stats-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+    environment:
+      - SPRING_APPLICATION_NAME=stats-server
+      - SERVER_PORT=0                      # случайный порт
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/ewm-stats
+      - SPRING_DATASOURCE_USERNAME=stat
+      - SPRING_DATASOURCE_PASSWORD=stat
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - EUREKA_INSTANCE_HOSTNAME=stats-server
+      # Конфиг из Config Server
+      - SPRING_CLOUD_CONFIG_DISCOVERY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_DISCOVERY_SERVICE_ID=config-server
+    networks:
+      - ewm-network
+    restart: on-failure
+
+  # ============================================================
+  # 6. MAIN-SERVICE (бывший ewm-service) — на случайном порту
+  # ============================================================
+  main-service:
+    build: ./core/main-service
+    container_name: main-service
+    depends_on:
+      ewm-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_started
+      stats-server:
+        condition: service_started
+    environment:
+      - SPRING_APPLICATION_NAME=main-service
+      - SERVER_PORT=0                      # случайный порт
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm-main
+      - SPRING_DATASOURCE_USERNAME=main
+      - SPRING_DATASOURCE_PASSWORD=main
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - EUREKA_INSTANCE_HOSTNAME=main-service
+      # Конфиг из Config Server
+      - SPRING_CLOUD_CONFIG_DISCOVERY_ENABLED=true
+      - SPRING_CLOUD_CONFIG_DISCOVERY_SERVICE_ID=config-server
+      - STATS_SERVICE_ID=stats-server
+      - STATS_RETRY_MAX_ATTEMPTS=3
+      - STATS_RETRY_BACKOFF_MS=3000
+      # Если statClient всё ещё использует прямой URL — лучше перейти на FeignClient(name="stats-server")
+      # - STATS_SERVICE_URL=http://stats-server:9090
+    networks:
+      - ewm-network
+    restart: on-failure
+
+networks:
+  ewm-network:
+    driver: bridge
+
+volumes:
+  stats-db-data:
+  ewm-db-data:
