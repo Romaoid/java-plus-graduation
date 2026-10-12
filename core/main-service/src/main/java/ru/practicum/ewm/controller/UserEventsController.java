@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.dto.*;
+import ru.practicum.ewm.service.EventOrchestrationService;
 import ru.practicum.ewm.service.EventService;
 import ru.practicum.ewm.service.ParticipationRequestService;
 
@@ -21,6 +22,7 @@ public class UserEventsController {
 
     private final EventService eventService;
     private final ParticipationRequestService requestService;
+    private final EventOrchestrationService eventOrchestrationService;
 
     @PostMapping()
     @ResponseStatus(HttpStatus.CREATED)
@@ -28,7 +30,7 @@ public class UserEventsController {
                                  @PathVariable Long userId) {
         log.info("POST /users/{}/events with body: {}", userId, request);
 
-        return eventService.addEvent(userId, request);
+        return eventOrchestrationService.addEvent(userId, request);
     }
 
     @GetMapping("/{eventId}")

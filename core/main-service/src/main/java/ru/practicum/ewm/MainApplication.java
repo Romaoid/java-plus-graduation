@@ -5,6 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@EnableFeignClients
 @SpringBootApplication
 @ComponentScan(basePackages = {"ru.practicum.ewm", "ru.practicum.stats"})
 public class MainApplication {

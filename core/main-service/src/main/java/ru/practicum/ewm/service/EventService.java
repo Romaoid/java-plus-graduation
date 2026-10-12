@@ -2,12 +2,14 @@ package ru.practicum.ewm.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import ru.practicum.ewm.dto.*;
+import ru.practicum.ewm.model.User;
 
 import java.util.List;
 
 public interface EventService {
 
     EventFullDto addEvent(Long userId, NewEventDto dto);
+    EventFullDto addEventForTestFeign(User initiator, NewEventDto dto);
 
     EventFullDto getPrivateEvent(Long userId, Long eventId);
 

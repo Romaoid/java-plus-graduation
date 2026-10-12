@@ -28,6 +28,24 @@ spring:
             allow-credentials: true
             max-age: 3600
       routes:
+        - id: user-service-admin-read
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users
+            - Method=GET
+          filters:
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
         - id: main-service-admin-read
           uri: lb://main-service
           predicates:
@@ -82,6 +100,10 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
+        - id: user-service-admin-write
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
         - id: main-service-admin-write
           uri: lb://main-service
           predicates:

@@ -68,6 +68,36 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
+    public EventFullDto addEventForTestFeign(User initiator, NewEventDto dto) {
+        Category category = getCategoryByIdWithValidation(dto.getCategory());
+        Location location = getLocation(dto.getLocation().getLat(), dto.getLocation().getLon());
+        LocalDateTime eventDate = getEventDateWithValidation(dto.getEventDate());
+
+        Event newEvent = Event.builder()
+                .title(dto.getTitle())
+                .annotation(dto.getAnnotation())
+                .description(dto.getDescription())
+                .eventDate(eventDate)
+                .category(category)
+                .initiator(initiator)
+                .location(location)
+                .confirmedRequests(0)
+                .participantLimit(dto.getParticipantLimit())
+                .paid(dto.getPaid())
+                .requestModeration(dto.getRequestModeration())
+                .created(LocalDateTime.now())
+                .state(EventState.PENDING)
+                .build();
+        log.info("Запись в базу данных объекта Event: {}", newEvent);
+
+        newEvent = eventRepository.save(newEvent);
+        log.info("id объекта: {}", newEvent.getId());
+
+        return EventMapper.toFullDto(newEvent, 0L);
+    }
+
+    @Override
     public EventFullDto getPrivateEvent(Long userId, Long eventId) {
         Event event = getEventIfExistWithOwnerValidation(eventId, userId);
 
