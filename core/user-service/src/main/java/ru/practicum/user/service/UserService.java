@@ -2,14 +2,17 @@ package ru.practicum.user.service;
 
 import ru.practicum.user.dto.NewUserRequest;
 import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.dto.UserShortDto;
 import ru.practicum.user.dto.UsersGetParams;
-import ru.practicum.user.model.User;
 
 import java.util.List;
+import java.util.Set;
 
 public interface UserService {
 
-    User getUserById(Long id);
+    UserShortDto getUserById(Long id);
+
+    List<UserShortDto> getUsersByIds(Set<Long> ids);
 
     List<UserDto> getUsers(UsersGetParams params);
 

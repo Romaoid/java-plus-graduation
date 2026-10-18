@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.user.dao.UserRepository;
 import ru.practicum.user.dto.NewUserRequest;
 import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.dto.UserShortDto;
 import ru.practicum.user.dto.UsersGetParams;
 import ru.practicum.user.exceprion.ConflictException;
 import ru.practicum.user.exceprion.NotFoundException;
@@ -19,6 +20,7 @@ import ru.practicum.user.model.QUser;
 import ru.practicum.user.model.User;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -47,10 +49,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getUserById(Long id) {
-
-        return userRepository.findById(id)
+    public UserShortDto getUserById(Long id) {
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Пользователь с id=" + id + " не найден"));
+
+        return UserMapper.toShortDto(user);
+    }
+
+    @Override
+    public List<UserShortDto> getUsersByIds(Set<Long> ids) {
+        List<User> users = userRepository.findAllByIdIn(ids);
+
+        return users.stream().map(UserMapper::toShortDto).toList();
     }
 
     @Override

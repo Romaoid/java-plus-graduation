@@ -46,46 +46,10 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
-        - id: main-service-admin-read
-          uri: lb://main-service
+        - id: event-service-read
+          uri: lb://event-service
           predicates:
-            - Path=/admin/**
-            - Method=GET
-          filters:
-            - name: Retry
-              args:
-                retries: 2
-                statuses:
-                  - BAD_GATEWAY
-                  - SERVICE_UNAVAILABLE
-                  - GATEWAY_TIMEOUT
-                methods:
-                  - GET
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 500ms
-        - id: main-service-user-read
-          uri: lb://main-service
-          predicates:
-            - Path=/users/**
-            - Method=GET
-          filters:
-            - name: Retry
-              args:
-                retries: 2
-                statuses:
-                  - BAD_GATEWAY
-                  - SERVICE_UNAVAILABLE
-                  - GATEWAY_TIMEOUT
-                methods:
-                  - GET
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 500ms
-        - id: main-service-public-read
-          uri: lb://main-service
-          predicates:
-            - Path=/categories/**,/events/**,/compilations/**
+            - Path=/admin/events, /users/{userId}/events, /users/{userId}/events/{id}, /events/**, /compilations/**, /admin/compilations/**, /categories/**, /admin/categories
             - Method=GET
           filters:
             - name: Retry
@@ -104,11 +68,7 @@ spring:
           uri: lb://user-service
           predicates:
             - Path=/admin/users/**
-        - id: main-service-admin-write
-          uri: lb://main-service
+        - id: event-service-admin-write
+          uri: lb://event-service
           predicates:
-            - Path=/admin/**
-        - id: main-service-user-write
-          uri: lb://main-service
-          predicates:
-            - Path=/users/**
+            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{userId}/events, /users/{userId}/events/{id}
