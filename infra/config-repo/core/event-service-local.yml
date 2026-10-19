@@ -23,3 +23,6 @@ stats:
   retry:
     max-attempts: 3
     backoff-ms: 3000
+
+logging.level:
+  ru.practicum.event.logger: DEBUG

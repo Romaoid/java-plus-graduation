@@ -28,7 +28,7 @@ spring:
             allow-credentials: true
             max-age: 3600
       routes:
-        - id: user-service-admin-read
+        - id: user-service-read
           uri: lb://user-service
           predicates:
             - Path=/admin/users
@@ -49,7 +49,7 @@ spring:
         - id: event-service-read
           uri: lb://event-service
           predicates:
-            - Path=/admin/events, /users/{userId}/events, /users/{userId}/events/{id}, /events/**, /compilations/**, /admin/compilations/**, /categories/**, /admin/categories
+            - Path=/admin/events, /users/{uId}/events, /users/{uId}/events/{eId}, /events/**, /compilations/**, /admin/compilations/**, /categories/**, /admin/categories
             - Method=GET
           filters:
             - name: Retry
@@ -64,11 +64,33 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
-        - id: user-service-admin-write
+        - id: request-service-read
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{uId}/events/{eId}/requests, /users/{uId}/requests
+            - Method=GET
+          filters:
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
+        - id: user-service-write
           uri: lb://user-service
           predicates:
             - Path=/admin/users/**
-        - id: event-service-admin-write
+        - id: event-service-write
           uri: lb://event-service
           predicates:
-            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{userId}/events, /users/{userId}/events/{id}
+            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{uId}/events, /users/{uId}/events/{eId}
+        - id: request-service-write
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{uId}/events/{eId}/requests, /users/{uId}/requests, /users/{uId}/requests/**

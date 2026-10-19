@@ -16,7 +16,7 @@ public class FeignHeaderConfig {
     public RequestInterceptor sourceServiceHeaderInterceptor() {
         return template -> {
             String requestId = getCurrentRequestId();
-            template.header("X-Source-Service", "main-service");
+            template.header("X-Source-Service", "event-service");
             template.header("X-Request-Id", requestId);
         };
     }

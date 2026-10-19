@@ -66,6 +66,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     public Event updateEvent(Long userId, Long eventId,
                                     UpdateEventUserRequest request) {
         Event event = getEventIfExistWithOwnerValidation(eventId, userId);
@@ -133,6 +134,8 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public Event updateEventByAdmin(Long eventId, UpdateEventAdminRequest request) {
         Event event = getEventIfExist(eventId);
+        System.out.println("*******************************");
+        System.out.println(event);
 
         if (request.getEventDate() != null) {
             LocalDateTime eventDate = parseDateTimeOrNull(request.getEventDate());
@@ -184,14 +187,27 @@ public class EventServiceImpl implements EventService {
         return eventRepository.save(event);
     }
 
-    private Location getLocation(Float Lat, Float Lon) {
-        return locationRepository.findByLatAndLon(Lat, Lon)
-                .orElseGet(() -> locationRepository.save(new Location(Lat, Lon)));
-    }
-
     @Override
     public List<Event> findAllByIdIn(Set<Long> ids) {
         return eventRepository.findAllByIdIn(ids);
+    }
+
+    @Override
+    @Transactional
+    public Integer updateDecrementConfirmedRequests(Long id) {
+        return eventRepository.updateDecrementConfirmedRequests(id);
+    }
+
+    @Override
+    @Transactional
+    public Integer updateIncrementConfirmedRequests(Long id) {
+        return eventRepository.updateIncrementConfirmedRequests(id);
+    }
+
+    @Override
+    @Transactional
+    public Event saveEvent(Event event) {
+        return eventRepository.save(event);
     }
 
     private Event getEventIfExistWithOwnerValidation(long eventId, long userId) {
@@ -370,5 +386,11 @@ public class EventServiceImpl implements EventService {
         if (request.getTitle() != null) {
             event.setTitle(request.getTitle());
         }
+    }
+
+
+    private Location getLocation(Float Lat, Float Lon) {
+        return locationRepository.findByLatAndLon(Lat, Lon)
+                .orElseGet(() -> locationRepository.save(new Location(Lat, Lon)));
     }
 }

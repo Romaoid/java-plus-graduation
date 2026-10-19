@@ -4,7 +4,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.event.dto.*;
+import ru.practicum.event.exception.ConflictException;
 import ru.practicum.event.exception.NotFoundException;
+import ru.practicum.event.exception.ProcessingException;
 import ru.practicum.event.exception.ValidationException;
 import ru.practicum.event.logger.Loggable;
 import ru.practicum.event.mapper.EventMapper;
@@ -20,12 +22,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Loggable
 public class EventOrchestrationService {
     private final EventService service;
     private final UserService userService;
     private final StatClient statClient;
 
+    @Loggable
     public EventFullDto addEvent(Long userId, NewEventDto dto) {
         UserShortDto initiator = userService.getUser(userId);
 
@@ -34,6 +36,7 @@ public class EventOrchestrationService {
         return EventMapper.toFullDto(event, initiator, 0L);
     }
 
+    @Loggable
     public EventFullDto getPrivateEvent(Long userId, Long eventId) {
         Event event = service.getPrivateEvent(userId, eventId);
 
@@ -44,6 +47,7 @@ public class EventOrchestrationService {
         return EventMapper.toFullDto(event, initiator, stat.getHits());
     }
 
+    @Loggable
     public EventFullDto updateEvent(Long userId, Long eventId, UpdateEventUserRequest request) {
         Event event = service.updateEvent(userId, eventId, request);
 
@@ -54,6 +58,7 @@ public class EventOrchestrationService {
         return EventMapper.toFullDto(event, initiator, stat.getHits());
     }
 
+    @Loggable
     public List<EventShortDto> getPrivateEvents(long userId, int from, int size) {
         UserShortDto initiator;
         try {
@@ -79,6 +84,7 @@ public class EventOrchestrationService {
                 .toList();
     }
 
+    @Loggable
     public List<EventShortDto> getPublicEvents(EventSearchParams params, HttpServletRequest request) {
         List<Event> events = service.getPublicEvents(params);
 
@@ -124,6 +130,7 @@ public class EventOrchestrationService {
         return result;
     }
 
+    @Loggable
     public EventFullDto getPublicEventById(Long id, HttpServletRequest request) {
         Event event = service.getPublicEventById(id);
 
@@ -140,6 +147,7 @@ public class EventOrchestrationService {
         return EventMapper.toFullDto(event, initiator, stat.getHits());
     }
 
+    @Loggable
     public List<EventFullDto> getEventsByAdmin(AdminEventSearchParams params) {
         List<Event> events = service.getEventsByAdmin(params);
 
@@ -171,14 +179,61 @@ public class EventOrchestrationService {
                 .toList();
     }
 
+    @Loggable
     public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest request){
+        System.out.println(request);
         Event event = service.updateEventByAdmin(eventId, request);
 
+        System.out.println(event);
         ViewStatsDto stat = getStatByEvent(event, false);
 
         UserShortDto initiator = userService.getUser(event.getInitiator());
 
         return EventMapper.toFullDto(event, initiator, stat.getHits());
+    }
+
+    @Loggable
+    public EventDto getEventByIdByApi(long id) {
+        Event event = service.getPublicEventById(id);
+
+        if (event.getState() != EventState.PUBLISHED) {
+           throw new ConflictException(String.format("Event %d not published.", id));
+        }
+        return EventMapper.mapToDto(event);
+    }
+
+    @Loggable
+    public void updateConfirmedRequestsByEventId(Long eventId, String modify) {
+        int i = switch (modify.toLowerCase()) {
+            case "decrement" -> service.updateDecrementConfirmedRequests(eventId);
+            case "increment" -> service.updateIncrementConfirmedRequests(eventId);
+            default -> throw new ConflictException("Error: Parameter modify is incorrect. Value: " + modify);
+        };
+
+        if (i != 1) {
+            throw new ProcessingException("Error: Sql entity doesn't update");
+        }
+    }
+
+    @Loggable
+    public EventDto updateConfirmedRequestsByOwner(EventDto eventToUpdate) {
+        Event event = service.getPrivateEvent(eventToUpdate.getInitiator(), eventToUpdate.getId());
+
+        Integer confirmedRequestsCount = eventToUpdate.getConfirmedRequests();
+
+        if (event.getParticipantLimit() < confirmedRequestsCount) {
+            throw new ConflictException("Error: Parameter count is bigger than events participant limit. Value: " + confirmedRequestsCount);
+        }
+
+        int confirmedOld = event.getConfirmedRequests();
+        int limitOld = event.getParticipantLimit();
+
+        event.setConfirmedRequests(confirmedOld + confirmedRequestsCount);
+        event.setParticipantLimit(limitOld - confirmedRequestsCount);
+
+        return EventMapper.mapToDto(
+                service.saveEvent(event)
+        );
     }
 
     private ViewStatsDto getStatByEvent(Event event, boolean uniq) {

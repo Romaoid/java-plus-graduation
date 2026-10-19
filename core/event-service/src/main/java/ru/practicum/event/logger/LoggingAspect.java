@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Aspect
 @Component
 public class LoggingAspect {
-    @Around("@annotation(ru.yandex.practicum.event.logger.Loggable)")
+    @Around("@annotation(ru.practicum.event.logger.Loggable)")
     public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
         String methodName = joinPoint.getSignature().toShortString();
         Object[] args = joinPoint.getArgs();

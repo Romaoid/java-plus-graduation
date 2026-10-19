@@ -25,4 +25,10 @@ public interface EventService {
     Event updateEventByAdmin(Long eventId, UpdateEventAdminRequest request);
 
     List<Event> findAllByIdIn(Set<Long> ids);
+
+    Integer updateDecrementConfirmedRequests(Long id);
+
+    Integer updateIncrementConfirmedRequests(Long id);
+
+    Event saveEvent(Event event);
 }

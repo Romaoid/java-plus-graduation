@@ -1,9 +1,6 @@
 package ru.practicum.event.mapper;
 
-import ru.practicum.event.dto.EventFullDto;
-import ru.practicum.event.dto.EventShortDto;
-import ru.practicum.event.dto.LocationDto;
-import ru.practicum.event.dto.UserShortDto;
+import ru.practicum.event.dto.*;
 import ru.practicum.event.model.Event;
 
 import java.time.format.DateTimeFormatter;
@@ -43,6 +40,16 @@ public class EventMapper {
                 .eventDate(event.getEventDate().format(FORMATTER))
                 .annotation(event.getAnnotation())
                 .views(views == null ? 0L : views)
+                .build();
+    }
+
+    public static EventDto mapToDto(Event event) {
+        return EventDto.builder()
+                .id(event.getId())
+                .initiator(event.getInitiator())
+                .participantLimit(event.getParticipantLimit())
+                .requestModeration(event.getRequestModeration())
+                .confirmedRequests(event.getConfirmedRequests())
                 .build();
     }
 }

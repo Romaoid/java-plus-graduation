@@ -1,6 +1,7 @@
 package ru.practicum.event.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +19,18 @@ public interface EventRepository extends JpaRepository<Event, Long>,
             "FROM Event e " +
             "WHERE e.category.id = :categoryId")
     boolean existsByCategoryId(@Param("categoryId") Long categoryId);
+
+    @Modifying
+    @Query(value =
+            "UPDATE events SET confirmed_requests = (confirmed_requests - 1) " +
+                    "WHERE id = :id AND confirmed_requests > 0",
+            nativeQuery = true)
+    Integer updateDecrementConfirmedRequests(@Param("id") Long id);
+
+    @Modifying
+    @Query(value =
+            "UPDATE events SET confirmed_requests = (confirmed_requests + 1) " +
+                    "WHERE id = :id AND confirmed_requests < participant_limit",
+            nativeQuery = true)
+    Integer updateIncrementConfirmedRequests(@Param("id") Long id);
 }
