@@ -1,4 +1,4 @@
-package ru.practicum.request.dto;
+package ru.practicum.comment.dto;
 
 import lombok.*;
 
@@ -9,6 +9,5 @@ import lombok.*;
 @Builder
 public class UserShortDto {
     private Long id;
-
     private String name;
 }

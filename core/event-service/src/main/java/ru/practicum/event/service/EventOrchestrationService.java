@@ -203,6 +203,17 @@ public class EventOrchestrationService {
     }
 
     @Loggable
+    public List<EventDto> getEventsByIds(Set<Long> ids) {
+        List<Event> events = service.findAllByIdIn(ids);
+
+        if (events.isEmpty()) {
+            throw new NotFoundException("Events not found.");
+        }
+
+        return events.stream().map(EventMapper::mapToDto).toList();
+    }
+
+    @Loggable
     public void updateConfirmedRequestsByEventId(Long eventId, String modify) {
         int i = switch (modify.toLowerCase()) {
             case "decrement" -> service.updateDecrementConfirmedRequests(eventId);

@@ -15,6 +15,6 @@ public interface EventClient {
     void updateConfirmedRequestsFromEventById(@PathVariable long id,
                                                     @RequestParam("modify") String modify);
 
-    @PostMapping("/api/events")
+    @PutMapping("/api/events")
     EventDto updateConfirmedRequestsFromEventByIdByOwner(@RequestBody EventDto dto);
 }

@@ -5,6 +5,9 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventDto;
 import ru.practicum.event.service.EventOrchestrationService;
 
+import java.util.List;
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/events")
 @RequiredArgsConstructor
@@ -22,8 +25,13 @@ public class ServiceController {
         orchestrationService.updateConfirmedRequestsByEventId(id, modify);
     }
 
-    @PostMapping()
+    @PutMapping()
     public EventDto updateConfirmedRequestsByOwner(@RequestBody EventDto eventDto) {
         return orchestrationService.updateConfirmedRequestsByOwner(eventDto);
+    }
+
+    @PostMapping
+    public List<EventDto> getEventsByIds(@RequestBody Set<Long> ids) {
+        return orchestrationService.getEventsByIds(ids);
     }
 }

@@ -46,6 +46,7 @@ public class EventMapper {
     public static EventDto mapToDto(Event event) {
         return EventDto.builder()
                 .id(event.getId())
+                .title(event.getTitle())
                 .initiator(event.getInitiator())
                 .participantLimit(event.getParticipantLimit())
                 .requestModeration(event.getRequestModeration())

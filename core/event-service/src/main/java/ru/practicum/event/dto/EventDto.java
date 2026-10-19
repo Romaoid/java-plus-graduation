@@ -7,6 +7,7 @@ import lombok.Getter;
 @Getter
 public class EventDto {
     private Long id;
+    private String title;
     private Long initiator;
     private Boolean requestModeration;
     private Integer participantLimit;
