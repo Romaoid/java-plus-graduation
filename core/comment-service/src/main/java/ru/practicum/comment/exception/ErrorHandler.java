@@ -1,5 +1,6 @@
 package ru.practicum.comment.exception;
 
+import feign.FeignException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,9 +22,9 @@ import java.util.stream.Collectors;
 public class ErrorHandler {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    @ExceptionHandler(NotFoundException.class)
+    @ExceptionHandler({NotFoundException.class, FeignException.NotFound.class})
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiError handleNotFoundException(final NotFoundException ex) {
+    public ApiError handleNotFoundException(final Exception ex) {
         log.error("Получен статус 404 Not Found: {}", ex.getMessage(), ex);
         return ApiError.builder()
                 .errors(getStackTrace(ex))
@@ -62,7 +63,7 @@ public class ErrorHandler {
                 .build();
     }
 
-    @ExceptionHandler({DataIntegrityViolationException.class, ConflictException.class})
+    @ExceptionHandler({DataIntegrityViolationException.class, FeignException.Conflict.class, ConflictException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiError handleConflictException(final Exception ex) {
         String reason;

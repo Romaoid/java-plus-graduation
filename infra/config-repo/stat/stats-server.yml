@@ -1,9 +1,9 @@
 spring:
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://stats-db:5432/ewm-stats
-    username: stat
-    password: stat
+    url: jdbc:postgresql://ewm-db:5432/ewm-stats
+    username: ewm
+    password: ewm
   jpa:
     properties:
       hibernate:
@@ -16,7 +16,7 @@ spring:
       schema-locations: classpath:schema-stat.sql
 
 main-server:
-  url: main-service
+  url: event-service
 
 server:
   port: 0

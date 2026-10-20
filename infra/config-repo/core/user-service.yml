@@ -6,7 +6,7 @@ spring:
     driverClassName: org.postgresql.Driver
     url: jdbc:postgresql://ewm-db:5432/user-service
     username: ewm
-    password: user-service
+    password: ewm
   jpa:
     properties:
       hibernate:

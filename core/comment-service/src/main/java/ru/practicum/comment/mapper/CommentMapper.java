@@ -23,4 +23,16 @@ public class CommentMapper {
                 .createdOn(comment.getCreationDate())
                 .build();
     }
+
+    public static CommentDto toDegradedDto(Comment comment, UserShortDto user) {
+        Long parentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+
+        return CommentDto.builder()
+                .id(comment.getId())
+                .answerTo(parentId)
+                .name(user.getName())
+                .text(comment.getText())
+                .createdOn(comment.getCreationDate())
+                .build();
+    }
 }

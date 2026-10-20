@@ -231,16 +231,13 @@ public class EventOrchestrationService {
         Event event = service.getPrivateEvent(eventToUpdate.getInitiator(), eventToUpdate.getId());
 
         Integer confirmedRequestsCount = eventToUpdate.getConfirmedRequests();
+        int confirmedOld = event.getConfirmedRequests();
 
-        if (event.getParticipantLimit() < confirmedRequestsCount) {
+        if (event.getParticipantLimit() < confirmedOld + confirmedRequestsCount) {
             throw new ConflictException("Error: Parameter count is bigger than events participant limit. Value: " + confirmedRequestsCount);
         }
 
-        int confirmedOld = event.getConfirmedRequests();
-        int limitOld = event.getParticipantLimit();
-
         event.setConfirmedRequests(confirmedOld + confirmedRequestsCount);
-        event.setParticipantLimit(limitOld - confirmedRequestsCount);
 
         return EventMapper.mapToDto(
                 service.saveEvent(event)

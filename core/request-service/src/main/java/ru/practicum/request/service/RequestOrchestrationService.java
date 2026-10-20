@@ -133,6 +133,16 @@ public class RequestOrchestrationService {
         }
 
         List<ParticipationRequest> requests = findRequestsByEventId(eventId);
+
+        Set<Long> idsToCheck = new HashSet<>(request.getRequestIds());
+
+        boolean allPending = requests.stream()
+                .filter(req -> idsToCheck.contains(req.getId()))
+                .allMatch(req -> req.getStatus() == RequestStatus.PENDING);
+
+        if (!allPending) {
+            throw new ConflictException("Request must have status PENDING");
+        }
         //проверяем, что лимит для заявок не исчерпан
         long countConfirmed = requests.stream()
                 .filter(req -> req.getStatus() == RequestStatus.CONFIRMED)
@@ -143,15 +153,15 @@ public class RequestOrchestrationService {
         }
 
         //проверяем, что заявки в состоянии Ожидания
-        Set<Long> idsToCheck = new HashSet<>(request.getRequestIds());
-
-        boolean allPending = requests.stream()
-                .filter(req -> idsToCheck.contains(req.getId()))
-                .allMatch(req -> req.getStatus() == RequestStatus.PENDING);
-
-        if (!allPending) {
-            throw new ValidationException("Request must have status PENDING");
-        }
+//        Set<Long> idsToCheck = new HashSet<>(request.getRequestIds());
+//
+//        boolean allPending = requests.stream()
+//                .filter(req -> idsToCheck.contains(req.getId()))
+//                .allMatch(req -> req.getStatus() == RequestStatus.PENDING);
+//
+//        if (!allPending) {
+//            throw new ValidationException("Request must have status PENDING");
+//        }
 
         List<ParticipationRequest> updatedRequests = new ArrayList<>();
         List<ParticipationRequest> toConfirm = new ArrayList<>();
@@ -230,7 +240,13 @@ public class RequestOrchestrationService {
 
     @Loggable
     private EventDto updateConfirmedRequestsByOwner(EventDto event) {
+        try {
             return eventClient.updateConfirmedRequestsFromEventByIdByOwner(event);
+    } catch (FeignException.Conflict e) {
+        throw new ConflictException(e.getMessage());
+    } catch (FeignException.ServiceUnavailable e) {
+        throw new ProcessingException("Event service is unavailable now, please try later.");
+    }
     }
 
     private Boolean isRequestAlreadyExist(Long userId, Long eventId) {

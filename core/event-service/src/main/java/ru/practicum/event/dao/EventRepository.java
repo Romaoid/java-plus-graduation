@@ -30,7 +30,7 @@ public interface EventRepository extends JpaRepository<Event, Long>,
     @Modifying
     @Query(value =
             "UPDATE events SET confirmed_requests = (confirmed_requests + 1) " +
-                    "WHERE id = :id AND confirmed_requests < participant_limit",
+                    "WHERE id = :id AND (participant_limit = 0 OR confirmed_requests < participant_limit)",
             nativeQuery = true)
     Integer updateIncrementConfirmedRequests(@Param("id") Long id);
 }

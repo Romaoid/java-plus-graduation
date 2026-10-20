@@ -3,7 +3,7 @@ spring:
     driverClassName: org.postgresql.Driver
     url: jdbc:postgresql://ewm-db:5432/event-service
     username: ewm
-    password: event-service
+    password: ewm
   jpa:
     properties:
       hibernate:

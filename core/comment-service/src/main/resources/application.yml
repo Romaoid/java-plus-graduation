@@ -13,3 +13,17 @@ spring:
       discovery:
         enabled: true
         service-id: config-server
+
+logging:
+  level:
+    ru.practicum.comment.feign: DEBUG
+    org.springframework.cache: TRACE
+    com.github.benmanes.caffeine.cache: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+
+feign:
+  client:
+    config:
+      default:
+        loggerLevel: FULL

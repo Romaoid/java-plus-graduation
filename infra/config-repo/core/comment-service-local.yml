@@ -13,3 +13,28 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: none
+
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 3000
+            loggerLevel: basic
+
+
+  resilience4j:
+    circuitbreaker:
+      configs:
+        default:
+          sliding-window-size: 5
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 10s
+          permitted-number-of-calls-in-half-open-state: 3
+    timelimiter:
+      configs:
+        default:
+          timeout-duration: 3s

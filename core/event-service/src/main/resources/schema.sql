@@ -33,8 +33,7 @@ CREATE TABLE IF NOT EXISTS events (
     published_on       TIMESTAMP,
     created_on         TIMESTAMP NOT NULL,
     CONSTRAINT fk_events_category_id FOREIGN KEY (category_id) REFERENCES categories(id),
-    CONSTRAINT fk_events_location_id FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE,
-    CONSTRAINT chk_cnfrmd_request_limit CHECK (confirmed_requests <= participant_limit)
+    CONSTRAINT fk_events_location_id FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS events_compilations (
