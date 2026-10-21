@@ -134,8 +134,6 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public Event updateEventByAdmin(Long eventId, UpdateEventAdminRequest request) {
         Event event = getEventIfExist(eventId);
-        System.out.println("*******************************");
-        System.out.println(event);
 
         if (request.getEventDate() != null) {
             LocalDateTime eventDate = parseDateTimeOrNull(request.getEventDate());

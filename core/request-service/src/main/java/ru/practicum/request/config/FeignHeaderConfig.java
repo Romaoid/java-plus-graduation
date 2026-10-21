@@ -11,13 +11,16 @@ import java.util.UUID;
 
 @Configuration
 public class FeignHeaderConfig {
+    private final static String HEADER_NAME_X_SOURCE_SERVICE = "X-Source-Service";
+    private final static String HEADER_NAME_X_REQUEST_ID = "X-Source-Service";
+    private final static String HEADER_VALUE_X_SOURCE_SERVICE = "request-service";
 
     @Bean
     public RequestInterceptor sourceServiceHeaderInterceptor() {
         return template -> {
             String requestId = getCurrentRequestId();
-            template.header("X-Source-Service", "request-service");
-            template.header("X-Request-Id", requestId);
+            template.header(HEADER_NAME_X_SOURCE_SERVICE, HEADER_VALUE_X_SOURCE_SERVICE);
+            template.header(HEADER_NAME_X_REQUEST_ID, requestId);
         };
     }
 
@@ -30,7 +33,7 @@ public class FeignHeaderConfig {
         }
 
         HttpServletRequest request = attributes.getRequest();
-        String requestId = request.getHeader("X-Request-Id");
+        String requestId = request.getHeader(HEADER_NAME_X_REQUEST_ID);
 
         if (requestId == null || requestId.isBlank()) {
             return UUID.randomUUID().toString();

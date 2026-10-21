@@ -134,6 +134,7 @@ public class RequestOrchestrationService {
 
         List<ParticipationRequest> requests = findRequestsByEventId(eventId);
 
+        //проверяем, что заявки в состоянии Ожидания
         Set<Long> idsToCheck = new HashSet<>(request.getRequestIds());
 
         boolean allPending = requests.stream()
@@ -151,17 +152,6 @@ public class RequestOrchestrationService {
         if (countConfirmed >= limit) {
             throw new ConflictException("The participant limit has been reached");
         }
-
-        //проверяем, что заявки в состоянии Ожидания
-//        Set<Long> idsToCheck = new HashSet<>(request.getRequestIds());
-//
-//        boolean allPending = requests.stream()
-//                .filter(req -> idsToCheck.contains(req.getId()))
-//                .allMatch(req -> req.getStatus() == RequestStatus.PENDING);
-//
-//        if (!allPending) {
-//            throw new ValidationException("Request must have status PENDING");
-//        }
 
         List<ParticipationRequest> updatedRequests = new ArrayList<>();
         List<ParticipationRequest> toConfirm = new ArrayList<>();
