@@ -28,10 +28,10 @@ spring:
             allow-credentials: true
             max-age: 3600
       routes:
-        - id: main-service-admin-read
-          uri: lb://main-service
+        - id: user-service-read
+          uri: lb://user-service
           predicates:
-            - Path=/admin/**
+            - Path=/admin/users
             - Method=GET
           filters:
             - name: Retry
@@ -46,10 +46,10 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
-        - id: main-service-user-read
-          uri: lb://main-service
+        - id: comment-service-read
+          uri: lb://comment-service
           predicates:
-            - Path=/users/**
+            - Path=/events/{eventId}/comment**, /admin/comments
             - Method=GET
           filters:
             - name: Retry
@@ -64,10 +64,10 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
-        - id: main-service-public-read
-          uri: lb://main-service
+        - id: event-service-read
+          uri: lb://event-service
           predicates:
-            - Path=/categories/**,/events/**,/compilations/**
+            - Path=/admin/events, /users/{uId}/events, /users/{uId}/events/{eId}, /events/**, /compilations/**, /admin/compilations/**, /categories/**, /admin/categories
             - Method=GET
           filters:
             - name: Retry
@@ -82,11 +82,37 @@ spring:
                 backoff:
                   firstBackoff: 100ms
                   maxBackoff: 500ms
-        - id: main-service-admin-write
-          uri: lb://main-service
+        - id: request-service-read
+          uri: lb://request-service
           predicates:
-            - Path=/admin/**
-        - id: main-service-user-write
-          uri: lb://main-service
+            - Path=/users/{uId}/events/{eId}/requests, /users/{uId}/requests
+            - Method=GET
+          filters:
+            - name: Retry
+              args:
+                retries: 2
+                statuses:
+                  - BAD_GATEWAY
+                  - SERVICE_UNAVAILABLE
+                  - GATEWAY_TIMEOUT
+                methods:
+                  - GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
+        - id: user-service-write
+          uri: lb://user-service
           predicates:
-            - Path=/users/**
+            - Path=/admin/users/**
+        - id: event-service-write
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{uId}/events, /users/{uId}/events/{eId}
+        - id: request-service-write
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{uId}/events/{eId}/requests, /users/{uId}/requests, /users/{uId}/requests/**
+        - id: comment-service-write
+          uri: lb://comment-service
+          predicates:
+            - Path=/admin/comments/**, /users/{userId}/events/{eventId}/comments, /users/{userId}/events/{eventId}/comments/**
