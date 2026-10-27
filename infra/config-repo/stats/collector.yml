@@ -1,0 +1,16 @@
+grpc:
+  server:
+    port: 0
+
+server:
+  port: 0
+
+collector:
+  kafka:
+    topics:
+      actions: ${KAFKA_TOPIC_SENSORS:stats.user-actions.v1}
+
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      key-serializer: ${KAFKA_KEY_SERIALIZER:org.apache.kafka.common.serialization.StringSerializer}
+      value-serializer: ${KAFKA_VALUE_SERIALIZER:ru.practicum.serializer.ActionAvroSerializer}
