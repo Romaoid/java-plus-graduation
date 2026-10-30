@@ -8,7 +8,7 @@ server:
 collector:
   kafka:
     topics:
-      actions: ${KAFKA_TOPIC_SENSORS:stats.user-actions.v1}
+      actions: ${KAFKA_TOPIC_ACTIONS:stats.user-actions.v1}
 
     producer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

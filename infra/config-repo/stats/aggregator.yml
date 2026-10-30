@@ -1,0 +1,25 @@
+server:
+  port: 0
+
+aggregator:
+  kafka:
+    topics:
+      actions: ${KAFKA_TOPIC_ACTIONS:stats.user-actions.v1}
+      similarity: ${KAFKA_TOPIC_SIMILARITY:stats.events-similarity.v1}
+
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      key-serializer: ${KAFKA_KEY_SERIALIZER:org.apache.kafka.common.serialization.StringSerializer}
+      value-serializer: ${KAFKA_VALUE_SERIALIZER:ru.practicum.serializer.SimilarityAvroSerializer}
+
+    consumer:
+      client-id: ${KAFKA_CONSUMER_CLIENT_ID:AggregationConsumer}
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:Aggregation.group.id}
+      bootstrap-servers: ${KAFKA_CONSUMER_BOOTSTRAP_SERVERS:localhost:9092}
+      key-deserializer: ${KAFKA_KEY_DESERIALIZER:org.apache.kafka.common.serialization.VoidDeserializer}
+      value-deserializer: ${KAFKA_VALUE_DESERIALIZER:ru.practicum.deserializer.UserActionAvroDeserializer}
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:100}
+      fetch-max-bytes: ${KAFKA_FETCH_MAX_BYTES:3072000}
+      max-partition-fetch: ${KAFKA_MAX_PARTITION_FETCH:307200}
+      enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT:true}
+      attempt-timeout: ${KAFKA_ATTEMPT_TIMEOUT:1000}
