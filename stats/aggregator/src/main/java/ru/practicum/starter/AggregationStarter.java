@@ -105,10 +105,7 @@ public class AggregationStarter {
             return Optional.empty();
         }
 
-        Set<Long> neighbors = state.neighborsOf(eventA);
         Set<Long> eventIds = state.eventsForUser(userId);
-        eventIds.addAll(neighbors);
-
         eventIds.remove(eventA);
         if (eventIds.isEmpty()) {
             return Optional.empty();
@@ -118,17 +115,11 @@ public class AggregationStarter {
         List<EventSimilarityAvro> out = new ArrayList<>(eventIds.size());
 
         for (long eventB : eventIds) {
-            // Для eventB из neighbors,
-            // из userEvents: weightB == 0, deltaMin == 0,
-            // S_min не меняется — пересчитываем только из-за изменившегося S_A в знаменателе.
             double weightB = state.weight(eventB, userId);
             double deltaMin = Math.min(newWeight, weightB) - Math.min(oldWeight, weightB);
             double sMinNew = state.sMin(eventA, eventB) + deltaMin;
             if (deltaMin != 0.0) {
                 state.setSMin(eventA, eventB, sMinNew);
-            }
-            if (deltaMin == 0.0) {
-                continue;   // S_min не изменился — пару не отправляем
             }
 
             double sB = state.totalWeight(eventB);

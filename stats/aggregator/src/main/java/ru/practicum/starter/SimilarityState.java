@@ -15,7 +15,6 @@ import java.util.Set;
  *  2. totalWeightSum[e]      == sum(usersWeightMap[e].values()).
  *  3. minWeightsSum хранится только в нормализованном порядке: ключ — min(a,b), подклбч — max(a,b).
  *  4. minWeightsSum[a][b]    == sum_u min(usersWeightMap[a][u], usersWeightMap[b][u]).
- *  5. neighbors  хранит множество соседей, с которыми есть S_min > 0
  */
 @Component
 public class SimilarityState {
@@ -26,8 +25,6 @@ public class SimilarityState {
     private final Map<Long, Map<Long, Double>> minWeightsSum = new HashMap<>();
     /** eventId -> S_event */
     private final Map<Long, Double> totalWeightSum = new HashMap<>();
-    /** eventId -> [eventA_id...eventN_id] */
-    private final Map<Long, Set<Long>> neighbors = new HashMap<>();
 
     /**
      * Обновляет вес пользователя для события.
@@ -77,13 +74,6 @@ public class SimilarityState {
         long first = Math.min(eventA, eventB);
         long second = Math.max(eventA, eventB);
         minWeightsSum.computeIfAbsent(first, e -> new HashMap<>()).put(second, value);
-        if (value > 0.0) {
-            neighbors.computeIfAbsent(first, e -> new HashSet<>()).add(second);
-            neighbors.computeIfAbsent(second, e -> new HashSet<>()).add(first);
-        }
     }
 
-    public Set<Long> neighborsOf(long eventId) {
-        return new HashSet<>(neighbors.getOrDefault(eventId, Set.of()));
-    }
 }
