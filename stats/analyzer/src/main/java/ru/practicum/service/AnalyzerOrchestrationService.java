@@ -80,14 +80,17 @@ public class AnalyzerOrchestrationService {
         List<Long> interactionEventIds = actionsList.stream().map(UserAction::getEventId).toList();
 
         return similarList.stream()
-                .filter(s -> (!interactionEventIds.contains(s.getEventA()) && !interactionEventIds.contains(s.getEventB())))
-                .sorted(Comparator.comparingDouble(Similarity::getSimilarity).reversed())
+                .map(s -> {
+                    long other = (s.getEventA() == eventId) ? s.getEventB() : s.getEventA();
+                    return Map.entry(other, s.getSimilarity());
+                })
+                .filter(e -> !interactionEventIds.contains(e.getKey()))
+                .distinct()
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .limit(maxResults)
-                .map(s -> RecommendedEventProto.newBuilder()
-                        .setEventId(s.getEventA() == eventId
-                                ? s.getEventB()
-                                : s.getEventA())
-                        .setScore(s.getSimilarity())
+                .map(e -> RecommendedEventProto.newBuilder()
+                        .setEventId(e.getKey())
+                        .setScore(e.getValue())
                         .build()
                 );
     }

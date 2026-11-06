@@ -5,6 +5,7 @@ import ru.practicum.request.exception.ValidationException;
 
 @Slf4j
 public enum RequestStatus {
+    NONREQUESTED,
     REJECTED,
     PENDING,
     CONFIRMED,

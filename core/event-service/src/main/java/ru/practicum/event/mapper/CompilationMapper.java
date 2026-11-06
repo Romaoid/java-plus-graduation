@@ -15,20 +15,20 @@ public class CompilationMapper {
 
     public static CompilationDto toCompilationDto(Compilation compilation,
                                                   Map<Long, UserShortDto> initiators,
-                                                  Map<Long, Long> viewsMap) {
+                                                  Map<Long, Double> ratings) {
         return CompilationDto.builder()
                 .id(compilation.getId())
                 .title(compilation.getTitle())
                 .pinned(compilation.getPinned())
                 .events(compilation.getEvents().stream()
-                        .map(event -> toEventShortDto(event, initiators, viewsMap))
+                        .map(event -> toEventShortDto(event, initiators, ratings))
                         .collect(Collectors.toList()))
                 .build();
     }
 
     private static EventShortDto toEventShortDto(Event event,
                                                  Map<Long, UserShortDto> initiators,
-                                                 Map<Long, Long> viewsMap) {
+                                                 Map<Long, Double> ratings) {
         Long eventId = event.getId();
 
         return EventShortDto.builder()
@@ -39,7 +39,7 @@ public class CompilationMapper {
                 .paid(event.getPaid())
                 .category(CategoryMapper.toDto(event.getCategory()))
                 .initiator(initiators.get(event.getInitiator()))
-                .views(viewsMap.getOrDefault(eventId, 0L))
+                .rating(ratings.getOrDefault(eventId, 0.0))
                 .confirmedRequests(event.getConfirmedRequests())
                 .build();
     }

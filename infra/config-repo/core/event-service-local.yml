@@ -14,15 +14,16 @@ spring:
     hibernate:
       ddl-auto: none
 
-client:
-  url: stats-server
-
-stats:
-  service:
-    id: stats-server
-  retry:
-    max-attempts: 3
-    backoff-ms: 3000
+grpc:
+  client:
+    analyzer:
+      address: 'discovery:///analyzer'
+      negotiationType: PLAINTEXT
+    collector:
+      address: 'discovery:///collector'
+      negotiationType: PLAINTEXT
 
 logging.level:
   ru.practicum.event.logger: DEBUG
+  org:
+      springframework: DEBUG

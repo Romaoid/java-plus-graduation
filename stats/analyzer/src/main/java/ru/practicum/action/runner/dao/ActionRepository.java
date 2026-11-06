@@ -25,7 +25,7 @@ public interface ActionRepository extends JpaRepository<UserAction,Long> {
             nativeQuery = true)
     List<UserAction> findLastUserActionsWithLimitN(@Param("userId") long userId, @Param("max") long max);
 
-    @Query("SELECT a.eventId as event_id, " +
+    @Query("SELECT a.eventId as eventId, " +
             "SUM(a.rating) as score " +
             "FROM UserAction as a " +
             "WHERE a.eventId IN :eventIds " +

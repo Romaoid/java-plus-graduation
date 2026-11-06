@@ -10,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 @EnableCaching
 @EnableFeignClients
 @SpringBootApplication
-@ComponentScan(basePackages = {"ru.practicum.event", "ru.practicum.stats"})
+@ComponentScan({"ru.practicum.client", "ru.practicum.event"})
 public class EventApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(EventApplication.class, args);

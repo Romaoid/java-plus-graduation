@@ -15,15 +15,14 @@ spring:
       mode: always
       continue-on-error: false
 
-client:
-  url: stats-server
-
-stats:
-  service:
-    id: stats-server
-  retry:
-    max-attempts: 3
-    backoff-ms: 3000
+grpc:
+  client:
+    analyzer:
+      address: 'discovery:///analyzer'
+      negotiationType: PLAINTEXT
+    collector:
+      address: 'discovery:///collector'
+      negotiationType: PLAINTEXT
 
 server:
   port: 0

@@ -12,7 +12,9 @@ import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.model.RequestStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -64,5 +66,18 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     public ParticipationRequest getRequestIfExistOrThrow(Long requestId) {
         return requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Request with id= " + requestId + " was not found"));
+    }
+
+    @Override
+    public ParticipationRequest getRequestByEventIdAndUserId(Long eventId, Long userId) {
+         Optional<ParticipationRequest> request = requestRepository.findByEventIdAndRequesterId(eventId, userId);
+
+        return request.orElseGet(() -> ParticipationRequest.builder()
+                .id(-1L)
+                .eventId(eventId)
+                .requesterId(userId)
+                .status(RequestStatus.NONREQUESTED)
+                .created(LocalDateTime.now())
+                .build());
     }
 }

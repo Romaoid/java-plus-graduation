@@ -10,6 +10,12 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: none
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
 
 server:
   port: 0
@@ -21,11 +27,11 @@ grpc:
 logging:
   level:
     root: INFO
-    analyzer: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.springframework.kafka: DEBUG
-    org.springframework.transaction: DEBUG
+    analyzer: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+    org.springframework.kafka: INFO
+    org.springframework.transaction: INFO
 
 analyzer:
   kafka:
