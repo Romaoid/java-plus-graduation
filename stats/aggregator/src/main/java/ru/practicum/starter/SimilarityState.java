@@ -2,6 +2,7 @@ package ru.practicum.starter;
 
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,11 +21,11 @@ import java.util.Set;
 public class SimilarityState {
 
     /** eventId -> (userId -> weight) */
-    private final Map<Long, Map<Long, Double>> usersWeightMap = new HashMap<>();
+    private final Map<Long, Map<Long, BigDecimal>> usersWeightMap = new HashMap<>();
     /** minEventId -> (maxEventId -> S_min) */
-    private final Map<Long, Map<Long, Double>> minWeightsSum = new HashMap<>();
+    private final Map<Long, Map<Long, BigDecimal>> minWeightsSum = new HashMap<>();
     /** eventId -> S_event */
-    private final Map<Long, Double> totalWeightSum = new HashMap<>();
+    private final Map<Long, BigDecimal> totalWeightSum = new HashMap<>();
 
     /**
      * Обновляет вес пользователя для события.
@@ -32,27 +33,27 @@ public class SimilarityState {
      * @return true, если вес реально вырос (и состояние изменилось);
      *         false, если новое действие не увеличивает вес (VIEW после LIKE и т.п.).
      */
-    public boolean updateWeight(long eventId, long userId, double newWeight) {
-        Map<Long, Double> users = usersWeightMap.computeIfAbsent(eventId, e -> new HashMap<>());
-        double oldWeight = users.getOrDefault(userId, 0.0);
+    public boolean updateWeight(long eventId, long userId, BigDecimal newWeight) {
+        Map<Long, BigDecimal> users = usersWeightMap.computeIfAbsent(eventId, e -> new HashMap<>());
+        BigDecimal oldWeight = users.getOrDefault(userId, new BigDecimal("0.0"));
 
-        if (newWeight <= oldWeight) {
+        if (newWeight.compareTo(oldWeight) <= 0) {
             return false;
         }
 
         users.put(userId, newWeight);
-        totalWeightSum.merge(eventId, newWeight - oldWeight, Double::sum);
+        totalWeightSum.merge(eventId, newWeight.subtract(oldWeight), BigDecimal::add);
         return true;
     }
 
-    public double weight(long eventId, long userId) {
-        return usersWeightMap.getOrDefault(eventId, Map.of()).getOrDefault(userId, 0.0);
+    public BigDecimal weight(long eventId, long userId) {
+        return usersWeightMap.getOrDefault(eventId, Map.of()).getOrDefault(userId, new BigDecimal("0.0"));
     }
 
     /** Все события, с которыми у пользователя есть ненулевой вес. */
     public Set<Long> eventsForUser(long userId) {
         Set<Long> result = new HashSet<>();
-        for (Map.Entry<Long, Map<Long, Double>> e : usersWeightMap.entrySet()) {
+        for (Map.Entry<Long, Map<Long, BigDecimal>> e : usersWeightMap.entrySet()) {
             if (e.getValue().containsKey(userId)) {
                 result.add(e.getKey());
             }
@@ -60,17 +61,17 @@ public class SimilarityState {
         return result;
     }
 
-    public double totalWeight(long eventId) {
-        return totalWeightSum.getOrDefault(eventId, 0.0);
+    public BigDecimal totalWeight(long eventId) {
+        return totalWeightSum.getOrDefault(eventId, new BigDecimal("0.0"));
     }
 
-    public double sMin(long eventA, long eventB) {
+    public BigDecimal sMin(long eventA, long eventB) {
         long first = Math.min(eventA, eventB);
         long second = Math.max(eventA, eventB);
-        return minWeightsSum.getOrDefault(first, Map.of()).getOrDefault(second, 0.0);
+        return minWeightsSum.getOrDefault(first, Map.of()).getOrDefault(second, new BigDecimal("0.0"));
     }
 
-    public void setSMin(long eventA, long eventB, double value) {
+    public void setSMin(long eventA, long eventB, BigDecimal value) {
         long first = Math.min(eventA, eventB);
         long second = Math.max(eventA, eventB);
         minWeightsSum.computeIfAbsent(first, e -> new HashMap<>()).put(second, value);

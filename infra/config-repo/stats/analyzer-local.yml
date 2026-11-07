@@ -34,6 +34,9 @@ logging:
     org.springframework.transaction: INFO
 
 analyzer:
+  db:
+    upsert-sql: MERGE
+
   kafka:
     topics:
       action: ${KAFKA_TOPIC_ACTION:stats.user-actions.v1}

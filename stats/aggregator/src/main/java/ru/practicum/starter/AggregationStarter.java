@@ -15,6 +15,9 @@ import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.sender.SimilaritySender;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.*;
 
@@ -96,10 +99,11 @@ public class AggregationStarter {
     }
 
     private Optional<List<EventSimilarityAvro>> processRecord(UserActionAvro action) {
+        final MathContext SQRT_CONTEXT = new MathContext(16, RoundingMode.HALF_UP);
         long eventA = action.getEventId();
         long userId = action.getUserId();
-        double newWeight = weightOf(action.getActionType());
-        double oldWeight = state.weight(eventA, userId);
+        BigDecimal newWeight = weightOf(action.getActionType());
+        BigDecimal oldWeight = state.weight(eventA, userId);
 
         if (!state.updateWeight(eventA, userId, newWeight)) {
             return Optional.empty();
@@ -111,24 +115,26 @@ public class AggregationStarter {
             return Optional.empty();
         }
 
-        double sA = state.totalWeight(eventA);
+        BigDecimal sA = state.totalWeight(eventA);
         List<EventSimilarityAvro> out = new ArrayList<>(eventIds.size());
 
         for (long eventB : eventIds) {
-            double weightB = state.weight(eventB, userId);
-            double deltaMin = Math.min(newWeight, weightB) - Math.min(oldWeight, weightB);
-            double sMinNew = state.sMin(eventA, eventB) + deltaMin;
-            if (deltaMin != 0.0) {
+            BigDecimal weightB = state.weight(eventB, userId);
+            BigDecimal deltaMin = newWeight.min(weightB).subtract((oldWeight.min(weightB)));
+            BigDecimal sMinNew = state.sMin(eventA, eventB).add(deltaMin);
+            if (deltaMin.compareTo(new BigDecimal("0.0")) != 0) {
                 state.setSMin(eventA, eventB, sMinNew);
             }
 
-            double sB = state.totalWeight(eventB);
-            double similarity = sMinNew / (Math.sqrt(sA) * Math.sqrt(sB));
-
+            BigDecimal sB = state.totalWeight(eventB);
+            BigDecimal sqrtSA = sA.sqrt(SQRT_CONTEXT);
+            BigDecimal sqrtSB = sB.sqrt(SQRT_CONTEXT);
+            BigDecimal multiplySqrtTotalWeights = sqrtSA.multiply(sqrtSB);
+            BigDecimal similarity = sMinNew.divide(multiplySqrtTotalWeights, SQRT_CONTEXT);
             out.add(EventSimilarityAvro.newBuilder()
                     .setEventA(Math.min(eventA, eventB))
                     .setEventB(Math.max(eventA, eventB))
-                    .setScore(similarity)
+                    .setScore(similarity.doubleValue())
                     .setTimestamp(action.getTimestamp())
                     .build());
         }
@@ -136,11 +142,11 @@ public class AggregationStarter {
         return Optional.of(out);
     }
 
-    private static double weightOf(ActionTypeAvro type) {
+    private static BigDecimal weightOf(ActionTypeAvro type) {
         return switch (type) {
-            case VIEW -> 0.4;
-            case REGISTER -> 0.8;
-            case LIKE -> 1.0;
+            case VIEW -> new BigDecimal("0.4");
+            case REGISTER -> new BigDecimal("0.8");
+            case LIKE -> new BigDecimal("1.0");
         };
     }
 }

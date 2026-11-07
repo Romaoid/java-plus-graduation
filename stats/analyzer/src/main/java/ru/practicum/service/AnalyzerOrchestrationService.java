@@ -32,19 +32,17 @@ public class AnalyzerOrchestrationService {
         List<Long> historyIds  = recent.stream().map(UserAction::getEventId).toList();
 
         // 2. top-N похожих на них, с которыми пользователь не взаимодействовал
-        List<Similarity> topN = similarityService.getSimilaritiesByEventIds(historyIds)
+        List<Long> recommendedIds = similarityService.getSimilaritiesByEventIds(historyIds)
                 .stream()
                 .filter(s -> !bothInHistory(s, historyIds ))
                 .sorted(Comparator.comparingDouble(Similarity::getSimilarity).reversed())
+                .map(s -> historyIds.contains(s.getEventA()) ? s.getEventB() : s.getEventA())
+                .distinct()
                 .limit(maxResults)
                 .toList();
-        if (topN.isEmpty()) {
+        if (recommendedIds.isEmpty()) {
             return Stream.empty();
         }
-
-        List<Long> recommendedIds = topN.stream()
-                .map(s -> historyIds.contains(s.getEventA()) ? s.getEventB() : s.getEventA())
-                .toList();
 
         // 3. для каждого — список ближайших соседей и список пользовательских оценок
         List<Similarity> simsForRecommended = similarityService.getSimilaritiesByEventIds(recommendedIds);
@@ -116,6 +114,9 @@ public class AnalyzerOrchestrationService {
 
         for (Similarity s : sims) {
             Long neighbour = s.getEventA() == eventId ? s.getEventB() : s.getEventA();
+            if (!ratings.containsKey(neighbour)) {
+                continue;
+            }
             double rating = ratings.get(neighbour);
             weightedScoresSum += s.getSimilarity() * rating;
             similarityCoefficientsSum += s.getSimilarity();
