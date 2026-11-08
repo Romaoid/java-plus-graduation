@@ -1,6 +1,7 @@
 package ru.practicum.request.mapper;
 
 import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.dto.ParticipationRequestShortDto;
 import ru.practicum.request.model.ParticipationRequest;
 
 import java.time.format.DateTimeFormatter;
@@ -15,6 +16,14 @@ public class RequestMapper {
                 .requester(request.getRequesterId())
                 .event(request.getEventId())
                 .created(request.getCreated().format(FORMATTER))
+                .build();
+    }
+
+    public static ParticipationRequestShortDto toShortDto(ParticipationRequest request) {
+        return ParticipationRequestShortDto.builder()
+                .status(request.getStatus().toString())
+                .requester(request.getRequesterId())
+                .event(request.getEventId())
                 .build();
     }
 }

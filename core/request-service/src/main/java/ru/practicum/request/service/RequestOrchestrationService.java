@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.client.UserActionController;
 import ru.practicum.ewm.stats.proto.ActionTypeProto;
 import ru.practicum.ewm.stats.proto.UserActionProto;
-import ru.practicum.request.dto.EventDto;
-import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.request.dto.EventRequestStatusUpdateResult;
-import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.dto.*;
 import ru.practicum.request.exception.ConflictException;
 import ru.practicum.request.exception.NotFoundException;
 import ru.practicum.request.exception.ProcessingException;
@@ -220,9 +217,9 @@ public class RequestOrchestrationService {
     }
 
     @Loggable
-    public ParticipationRequestDto getRequestStatusByIds(long eventId, long userId) {
+    public ParticipationRequestShortDto getRequestStatusByIds(long eventId, long userId) {
         ParticipationRequest request = requestService.getRequestByEventIdAndUserId(eventId, userId);
-        return RequestMapper.toDto(request);
+        return RequestMapper.toShortDto(request);
     }
 
     private EventDto getEventById(long id) {

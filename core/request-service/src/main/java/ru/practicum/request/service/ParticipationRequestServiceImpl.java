@@ -12,7 +12,6 @@ import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.model.RequestStatus;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,11 +72,9 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
          Optional<ParticipationRequest> request = requestRepository.findByEventIdAndRequesterId(eventId, userId);
 
         return request.orElseGet(() -> ParticipationRequest.builder()
-                .id(-1L)
                 .eventId(eventId)
                 .requesterId(userId)
                 .status(RequestStatus.NONREQUESTED)
-                .created(LocalDateTime.now())
                 .build());
     }
 }
