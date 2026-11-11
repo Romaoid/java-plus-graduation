@@ -13,3 +13,14 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: none
+
+grpc:
+  client:
+    collector:
+      address: 'discovery:///collector'
+      negotiationType: PLAINTEXT
+
+logging.level:
+  ru.practicum.request.logger: DEBUG
+  org:
+    springframework: DEBUG

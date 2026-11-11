@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.client.RecommendationsClient;
 import ru.practicum.event.dao.CompilationRepository;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.exception.NotFoundException;
@@ -15,12 +16,11 @@ import ru.practicum.event.mapper.CompilationMapper;
 import ru.practicum.event.model.Compilation;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.QCompilation;
-import ru.practicum.stats.client.StatClient;
-import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +29,7 @@ public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository compilationRepository;
     private final EventService eventService;
     private final UserService userService;
-    private final StatClient statClient;
+    private final RecommendationsClient recommendationsClient;
 
     @Loggable
     @Override
@@ -108,10 +108,7 @@ public class CompilationServiceImpl implements CompilationService {
                 .map(Event::getId)
                 .collect(Collectors.toSet());
 
-        List<String> uris = allEventIds.stream()
-                .map(e -> "/events/" + e)
-                .toList();
-        Map<Long, Long> viewsByEventId = getStatsByUris(uris);
+        Map<Long, Double> ratingMap = getRating(allEventIds);
 
         Map<Long, UserShortDto> initiatorsMap = getUsersByEventSet(compilations.stream()
                 .flatMap(c -> c.getEvents().stream())
@@ -119,7 +116,7 @@ public class CompilationServiceImpl implements CompilationService {
         );
 
         return compilations.stream()
-                .map(comp -> CompilationMapper.toCompilationDto(comp, initiatorsMap, viewsByEventId))
+                .map(comp -> CompilationMapper.toCompilationDto(comp, initiatorsMap, ratingMap))
                 .collect(Collectors.toList());
     }
 
@@ -143,39 +140,31 @@ public class CompilationServiceImpl implements CompilationService {
         return predicate == null ? compilation.isNotNull() : predicate;
     }
 
-    private Map<Long, Long> getStatsByUris(List<String> uris) {
+    private CompilationDto getDto(Compilation compilation) {
+        Map<Long, Double> rating = getRating(compilation.getEvents()
+                .stream()
+                .map(Event::getId)
+                .collect(Collectors.toSet())
+        );
+        Map<Long, UserShortDto> initiators = getUsersByEventSet(compilation.getEvents());
 
-        List<ViewStatsDto> stats = statClient.getStat(LocalDateTime.MIN, LocalDateTime.MAX, uris, false);
-
-        if (stats == null || stats.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<Long, Long> viewsMap = new LinkedHashMap<>();
-        for (ViewStatsDto dto : stats) {
-            String uri = dto.getUri();
-            Long id = Long.parseLong(
-                    uri.substring(
-                            uri.lastIndexOf('/') + 1));
-            viewsMap.put(id, dto.getHits());
-        }
-
-        return viewsMap;
+        return CompilationMapper.toCompilationDto(compilation, initiators, rating);
     }
 
-    private CompilationDto getDto(Compilation compilation) {
-        Set<Long> allEventIds = compilation.getEvents().stream()
-                .map(Event::getId)
-                .collect(Collectors.toSet());
+    private Map<Long, Double> getRating(Collection<Long> ids) {
+        try (Stream<RecommendedEventProto> stream = recommendationsClient.getInteractionsCount(ids)) {
+            Map<Long, Double> ratings = stream.collect(Collectors.toMap(
+                    RecommendedEventProto::getEventId,
+                    RecommendedEventProto::getScore)
+            );
 
-        List<String> uris = allEventIds.stream()
-                .map(e -> "/events/" + e)
-                .toList();
-        Map<Long, Long> viewsByEventId = getStatsByUris(uris);
+            Map<Long, Double> result = new HashMap<>(ids.size());
+            for (Long id : ids) {
+                result.put(id, ratings.getOrDefault(id, 0.0));
+            }
 
-        Map<Long, UserShortDto> initiatorsMap = getUsersByEventSet(new HashSet<>(compilation.getEvents()));
-
-        return CompilationMapper.toCompilationDto(compilation, initiatorsMap, viewsByEventId);
+            return result;
+        }
     }
 
     private Map<Long, UserShortDto> getUsersByEventSet(Set<Event> events) {

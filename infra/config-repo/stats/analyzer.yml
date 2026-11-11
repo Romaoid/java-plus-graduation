@@ -1,0 +1,62 @@
+spring:
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://ewm-db:5432/ewm-stats
+    username: ewm
+    password: ewm
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+server:
+  port: 0
+
+grpc:
+  server:
+    port: 0
+
+logging:
+  level:
+    root: INFO
+    analyzer: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.kafka: DEBUG
+    org.springframework.transaction: DEBUG
+
+analyzer:
+  kafka:
+    topics:
+      action: ${KAFKA_TOPIC_ACTION:stats.user-actions.v1}
+      similarity: ${KAFKA_TOPIC_SIMILARITY:stats.events-similarity.v1}
+
+    consumer-attempt-timeout: ${KAFKA_CONSUMER_ATTEMPT_TIMEOUT:1000}
+
+    actionConsumer:
+      client-id: ${KAFKA_CONSUMER_CLIENT_ID:AnalyzerActionConsumer}
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:Analyzer.UserAction.group.id}
+      bootstrap-servers: ${KAFKA_CONSUMER_BOOTSTRAP_SERVERS:localhost:9092}
+      key-deserializer: ${KAFKA_KEY_DESERIALIZER:org.apache.kafka.common.serialization.VoidDeserializer}
+      value-deserializer: ${KAFKA_VALUE_DESERIALIZER:ru.practicum.action.runner.deserializer.UserActionAvroDeserializer}
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:200}
+      fetch-max-bytes: ${KAFKA_FETCH_MAX_BYTES:5242880}
+      max-partition-fetch: ${KAFKA_MAX_PARTITION_FETCH:524288}
+      enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT:true}
+
+    similarityConsumer:
+      client-id: ${KAFKA_CONSUMER_CLIENT_ID:AnalyzerSimilarityConsumer}
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:Analyzer.EventSimilarity.group.id}
+      bootstrap-servers: ${KAFKA_CONSUMER_BOOTSTRAP_SERVERS:localhost:9092}
+      key-deserializer: ${KAFKA_KEY_DESERIALIZER:org.apache.kafka.common.serialization.VoidDeserializer}
+      value-deserializer: ${KAFKA_VALUE_DESERIALIZER:ru.practicum.similarity.runner.deserializer.EventSimilarityAvroDeserializer}
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:100}
+      fetch-max-bytes: ${KAFKA_FETCH_MAX_BYTES:3072000}
+      max-partition-fetch: ${KAFKA_MAX_PARTITION_FETCH:307200}
+      enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT:false}

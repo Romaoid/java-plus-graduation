@@ -4,7 +4,7 @@ import ru.practicum.event.exception.ValidationException;
 
 public enum EventSort {
     EVENT_DATE,
-    VIEWS;
+    RATING;
 
     public static EventSort fromString(String value) {
         if (value == null || value.isBlank()) {
@@ -16,7 +16,7 @@ public enum EventSort {
         } catch (IllegalArgumentException e) {
             throw new ValidationException(
                     "Incorrect sort parameter: '" + value +
-                            "'. Allowed values: EVENT_DATE, VIEWS"
+                            "'. Allowed values: EVENT_DATE, RATING"
             );
         }
     }

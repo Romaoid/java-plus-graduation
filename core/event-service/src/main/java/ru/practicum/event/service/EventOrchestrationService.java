@@ -1,8 +1,10 @@
 package ru.practicum.event.service;
 
-import jakarta.servlet.http.HttpServletRequest;
+import com.google.protobuf.Timestamp;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.practicum.client.RecommendationsClient;
+import ru.practicum.client.UserActionController;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.exception.ConflictException;
 import ru.practicum.event.exception.NotFoundException;
@@ -13,19 +15,24 @@ import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventSort;
 import ru.practicum.event.model.EventState;
-import ru.practicum.stats.client.StatClient;
-import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
+import ru.practicum.ewm.stats.proto.UserActionProto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class EventOrchestrationService {
     private final EventService service;
     private final UserService userService;
-    private final StatClient statClient;
+    private final RequestService requestService;
+    private final RecommendationsClient recommendationsClient;
+    private final UserActionController userActionController;
 
     @Loggable
     public EventFullDto addEvent(Long userId, NewEventDto dto) {
@@ -33,7 +40,7 @@ public class EventOrchestrationService {
 
         Event event = service.addEvent(initiator.getId(), dto);
 
-        return EventMapper.toFullDto(event, initiator, 0L);
+        return EventMapper.toFullDto(event, initiator, 0.0);
     }
 
     @Loggable
@@ -42,9 +49,7 @@ public class EventOrchestrationService {
 
         UserShortDto initiator = userService.getUser(userId);
 
-        ViewStatsDto stat = getStatByEvent(event, false);
-
-        return EventMapper.toFullDto(event, initiator, stat.getHits());
+        return EventMapper.toFullDto(event, initiator, getRatingById(eventId));
     }
 
     @Loggable
@@ -53,9 +58,7 @@ public class EventOrchestrationService {
 
         UserShortDto initiator = userService.getUser(userId);
 
-        ViewStatsDto stat = getStatByEvent(event, false);
-
-        return EventMapper.toFullDto(event, initiator, stat.getHits());
+        return EventMapper.toFullDto(event, initiator, getRatingById(eventId));
     }
 
     @Loggable
@@ -73,55 +76,45 @@ public class EventOrchestrationService {
             return Collections.emptyList();
         }
 
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
+        List<Long> ids = events.stream()
+                .map(Event::getId)
                 .toList();
 
-        Map<Long, Long> stats = getStatsByUris(uris);
+        Map<Long, Double> ratings = getRatingsByIds(ids);
 
         return events.stream()
-                .map(view -> EventMapper.toShortDto(view, initiator, stats.get(view.getId())))
+                .map(view -> EventMapper.toShortDto(view, initiator, ratings.get(view.getId())))
                 .toList();
     }
 
     @Loggable
-    public List<EventShortDto> getPublicEvents(EventSearchParams params, HttpServletRequest request) {
+    public List<EventShortDto> getPublicEvents(EventSearchParams params) {
         List<Event> events = service.getPublicEvents(params);
 
         if (events.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
+        List<Long> ids = events.stream()
+                .map(Event::getId)
                 .toList();
 
-        Map<Long, Long> stats = getStatsByUris(uris);
+        Map<Long, Double> ratings = getRatingsByIds(ids);
 
-        Set<Long> initiatorIds = events.stream()
-                .map(Event::getInitiator)
-                .collect(Collectors.toSet());
-
-        Map<Long, UserShortDto> initiators = userService.getUsers(initiatorIds).stream()
-                .collect(Collectors.toMap(
-                        UserShortDto::getId,
-                        userShortDto -> userShortDto
-                ));
+        Map<Long, UserShortDto> initiators = getInitiatorsByEventList(events);
 
         List<EventShortDto> result = events.stream()
                 .map(view -> EventMapper.toShortDto(
                         view,
                         initiators.get(view.getInitiator()),
-                        stats.get(view.getId())
+                        ratings.get(view.getId())
                 ))
                 .toList();
 
-        sendStat(request.getRequestURI(), request.getRemoteAddr());
-
-        if (params.getSort() == EventSort.VIEWS) {
+        if (params.getSort() == EventSort.RATING) {
             return result.stream()
                     .sorted(
-                            Comparator.comparingLong(EventShortDto::getViews)
+                            Comparator.comparingDouble(EventShortDto::getRating)
                                     .reversed()
                     )
                     .toList();
@@ -131,7 +124,7 @@ public class EventOrchestrationService {
     }
 
     @Loggable
-    public EventFullDto getPublicEventById(Long id, HttpServletRequest request) {
+    public EventFullDto getEventById(Long id, long userId) {
         Event event = service.getPublicEventById(id);
 
         if (event.getState() != EventState.PUBLISHED) {
@@ -140,11 +133,11 @@ public class EventOrchestrationService {
 
         UserShortDto initiator = userService.getUser(event.getInitiator());
 
-        sendStat("/events/" + id, request.getRemoteAddr());
+        if (userId != -1) {
+            sendAction(id, userId, ActionTypeProto.ACTION_VIEW);
+        }
 
-        ViewStatsDto stat = getStatByEvent(event, true);
-
-        return EventMapper.toFullDto(event, initiator, stat.getHits());
+        return EventMapper.toFullDto(event, initiator, getRatingById(id));
     }
 
     @Loggable
@@ -155,27 +148,19 @@ public class EventOrchestrationService {
             return Collections.emptyList();
         }
 
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
+        List<Long> ids = events.stream()
+                .map(Event::getId)
                 .toList();
 
-        Map<Long, Long> stats = getStatsByUris(uris);
+        Map<Long, Double> ratings = getRatingsByIds(ids);
 
-        Set<Long> initiatorIds = events.stream()
-                .map(Event::getInitiator)
-                .collect(Collectors.toSet());
-
-        Map<Long, UserShortDto> initiators = userService.getUsers(initiatorIds).stream()
-                .collect(Collectors.toMap(
-                        UserShortDto::getId,
-                        UserShortDto -> UserShortDto
-                ));
+        Map<Long, UserShortDto> initiators = getInitiatorsByEventList(events);
 
         return events.stream()
                 .map(view -> EventMapper.toFullDto(
                         view,
                         initiators.get(view.getInitiator()),
-                        stats.get(view.getId())))
+                        ratings.get(view.getId())))
                 .toList();
     }
 
@@ -185,11 +170,10 @@ public class EventOrchestrationService {
         Event event = service.updateEventByAdmin(eventId, request);
 
         System.out.println(event);
-        ViewStatsDto stat = getStatByEvent(event, false);
 
         UserShortDto initiator = userService.getUser(event.getInitiator());
 
-        return EventMapper.toFullDto(event, initiator, stat.getHits());
+        return EventMapper.toFullDto(event, initiator, getRatingById(eventId));
     }
 
     @Loggable
@@ -244,50 +228,147 @@ public class EventOrchestrationService {
         );
     }
 
-    private ViewStatsDto getStatByEvent(Event event, boolean uniq) {
-        String uri = "/events/" + event.getId();
-
-        List<ViewStatsDto> dtos = statClient.getStat(
-                event.getCreated(),
-                LocalDateTime.now(),
-                List.of(uri),
-                uniq);
-
-        return dtos == null || dtos.isEmpty() ? new ViewStatsDto() : dtos.getFirst();
-    }
-
-    private Map<Long, Long> getStatsByUris(List<String> uris) {
-        final LocalDateTime STATS_MIN =
-                LocalDateTime.of(1970, 1, 1, 0, 0, 0);
-        final LocalDateTime STATS_MAX =
-                LocalDateTime.of(9999, 12, 31, 23, 59, 59);
-
-        List<ViewStatsDto> stats = statClient.getStat(STATS_MIN, STATS_MAX, uris, false);
-
-        if (stats == null || stats.isEmpty()) {
-            return Collections.emptyMap();
+    @Loggable
+    public List<EventShortDto> getRecommendationsByUserId(Long userId, int maxEvents) {
+        Map<Long, Double> top = topForUser(userId, maxEvents);
+        if (top.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        Map<Long, Long> viewsMap = new LinkedHashMap<>();
-        for (ViewStatsDto dto : stats) {
-            String uri = dto.getUri();
-            Long id = Long.parseLong(
-                    uri.substring(
-                            uri.lastIndexOf('/') + 1));
-            viewsMap.put(id, dto.getHits());
-        }
+        List<Event> events = service.findAllByIdIn(top.keySet());
 
-        return viewsMap;
+        Map<Long, UserShortDto> initiators = getInitiatorsByEventList(events);
+
+        return events.stream()
+                .map(event -> EventMapper.toShortDto(
+                        event,
+                        initiators.get(event.getInitiator()),
+                        top.get(event.getId())
+                ))
+                .toList();
     }
 
-    private void sendStat(String uri, String address) {
-        String serviceName = "ewm-event-service";
+    @Loggable
+    public void sendLike(long eventId, long userId) {
+        UserShortDto liker = userService.getUser(userId);
 
-        statClient.hit(
-                serviceName,
-                uri,
-                address,
-                LocalDateTime.now()
+        Event event = service.getPublicEventById(eventId);
+        if (event.getState() != EventState.PUBLISHED) {
+            throw new NotFoundException(String.format("Event %d not found", eventId));
+        }
+
+        if (event.getEventDate().isAfter(LocalDateTime.now())) {
+            throw new ValidationException("Error: Attend the event to evaluate. The event is due to begin");
+        }
+
+        ParticipationRequestDto request = requestService.getRequestStatus(liker.getId(), event.getId());
+
+        if (request.getStatus() == ParticipationRequestDto.RequestStatus.NONREQUESTED) {
+            throw new ValidationException(String.format("Error: Attend the event to evaluate. " +
+                    "User %d did not submit a request to participate in event %d", userId, eventId));
+        }
+
+        if (request.getStatus() != ParticipationRequestDto.RequestStatus.CONFIRMED) {
+            throw new ValidationException(String.format("Error: Attend the event to evaluate. " +
+                    "Request's status by user %d is: %s", userId, request.getStatus().name().toLowerCase()));
+        }
+
+        sendAction(eventId, userId, ActionTypeProto.ACTION_LIKE);
+    }
+
+    @Loggable
+    public List<EventShortDto> getSimilarEvents(long eventId, long userId, int maxResults) {
+        Map<Long, Double> sim = similarForUser(eventId, userId, maxResults);
+        if (sim.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Event> events = service.findAllByIdIn(sim.keySet());
+
+        Map<Long, UserShortDto> initiators = getInitiatorsByEventList(events);
+
+        return events.stream()
+                .map(event -> EventMapper.toShortDto(
+                        event,
+                        initiators.get(event.getInitiator()),
+                        sim.get(event.getId())
+                ))
+                .toList();
+    }
+
+    private Double getRatingById(Long id) {
+        List<RecommendedEventProto> scopeList = getRating(List.of(id));
+
+        return scopeList.isEmpty() ? 0.0 : scopeList.getFirst().getScore();
+    }
+
+    private Map<Long, Double> getRatingsByIds(List<Long> ids) {
+        List<RecommendedEventProto> scopeList = getRating(ids);
+
+        Map<Long, Double> ratings = scopeList.stream().collect(Collectors.toMap(
+                RecommendedEventProto::getEventId,
+                RecommendedEventProto::getScore)
         );
+
+        Map<Long, Double> result = new HashMap<>(ids.size());
+        for (Long id : ids) {
+            result.put(id, ratings.getOrDefault(id, 0.0));
+        }
+
+        return result;
+    }
+
+    private Map<Long, Double> topForUser(long userId, int max) {
+        try (Stream<RecommendedEventProto> stream =
+                     recommendationsClient.getRecommendationsForUser(userId, max)) {
+            return stream.collect(Collectors.toMap(
+                    RecommendedEventProto::getEventId,
+                    RecommendedEventProto::getScore)
+            );
+        }
+    }
+
+    private Map<Long, Double> similarForUser(long eventId, long userId, int maxResults) {
+        try (Stream<RecommendedEventProto> stream =
+                     recommendationsClient.getSimilarEvents(eventId, userId, maxResults)) {
+            return stream.collect(Collectors.toMap(
+                    RecommendedEventProto::getEventId,
+                    RecommendedEventProto::getScore)
+            );
+        }
+    }
+
+    private List<RecommendedEventProto> getRating(List<Long> eventIds) {
+        try (Stream<RecommendedEventProto> stream = recommendationsClient.getInteractionsCount(eventIds)) {
+            return stream.toList();
+        }
+    }
+
+    private void sendAction(long eventId, long userId, ActionTypeProto action) {
+        Instant now = Instant.now();
+
+        userActionController.collectUserAction(UserActionProto
+                .newBuilder()
+                .setEventId(eventId)
+                .setActionType(action)
+                .setUserId(userId)
+                .setTimestamp(Timestamp.newBuilder()
+                        .setSeconds(now.getEpochSecond())
+                        .setNanos(now.getNano())
+                        .build())
+                .build()
+        );
+    }
+
+    private Map<Long, UserShortDto> getInitiatorsByEventList(List<Event> events) {
+        Set<Long> initiatorIds = events.stream()
+                .map(Event::getInitiator)
+                .collect(Collectors.toSet());
+
+        return userService.getUsers(initiatorIds).stream()
+                .collect(Collectors.toMap(
+                        UserShortDto::getId,
+                        userShortDto -> userShortDto
+                ));
     }
 }

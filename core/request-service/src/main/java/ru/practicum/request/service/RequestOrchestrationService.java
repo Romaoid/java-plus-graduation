@@ -1,14 +1,15 @@
 package ru.practicum.request.service;
 
+import com.google.protobuf.Timestamp;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Service;
-import ru.practicum.request.dto.EventDto;
-import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.request.dto.EventRequestStatusUpdateResult;
-import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.client.UserActionController;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
+import ru.practicum.ewm.stats.proto.UserActionProto;
+import ru.practicum.request.dto.*;
 import ru.practicum.request.exception.ConflictException;
 import ru.practicum.request.exception.NotFoundException;
 import ru.practicum.request.exception.ProcessingException;
@@ -20,6 +21,7 @@ import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.model.RequestUpdateModifier;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +33,7 @@ import java.util.Set;
 public class RequestOrchestrationService {
     private final ParticipationRequestService requestService;
     private final EventClient eventClient;
+    private final UserActionController userActionController;
 
     @Loggable
     public ParticipationRequestDto sendRequest(Long userId, Long eventId) {
@@ -71,6 +74,8 @@ public class RequestOrchestrationService {
             updateConfirmedRequests(event.getId(), RequestUpdateModifier.DECREMENT);
             throw new ProcessingException("Request-service stop requesting with error, please try later.");
         }
+
+        sendAction(eventId,userId);
 
         log.info("request saved with id: {}", request.getId());
 
@@ -211,6 +216,12 @@ public class RequestOrchestrationService {
         return new EventRequestStatusUpdateResult(confirmed, rejected);
     }
 
+    @Loggable
+    public ParticipationRequestShortDto getRequestStatusByIds(long eventId, long userId) {
+        ParticipationRequest request = requestService.getRequestByEventIdAndUserId(eventId, userId);
+        return RequestMapper.toShortDto(request);
+    }
+
     private EventDto getEventById(long id) {
         try {
             return eventClient.getEventById(id);
@@ -259,5 +270,21 @@ public class RequestOrchestrationService {
 
     private List<ParticipationRequest> findRequestsByEventId(Long eventId) {
         return  requestService.getRequestsByEventId(eventId);
+    }
+
+    private void sendAction(long eventId, long userId) {
+        Instant now = Instant.now();
+
+        userActionController.collectUserAction(UserActionProto
+                .newBuilder()
+                .setEventId(eventId)
+                .setActionType(ActionTypeProto.ACTION_REGISTER)
+                .setUserId(userId)
+                .setTimestamp(Timestamp.newBuilder()
+                        .setSeconds(now.getEpochSecond())
+                        .setNanos(now.getNano())
+                        .build())
+                .build()
+        );
     }
 }

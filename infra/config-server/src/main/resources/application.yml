@@ -18,5 +18,5 @@ spring:
           search-locations:
             - file:./infra/config-repo
             - file:./infra/config-repo/core
-            - file:./infra/config-repo/stat
+            - file:./infra/config-repo/stats
             - file:./infra/config-repo/infra

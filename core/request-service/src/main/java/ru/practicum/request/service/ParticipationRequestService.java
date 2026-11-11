@@ -20,4 +20,6 @@ public interface ParticipationRequestService {
     Boolean existsByEventIdAndRequesterId(Long userId, Long eventId);
 
     ParticipationRequest getRequestIfExistOrThrow(Long requestId);
+
+    ParticipationRequest getRequestByEventIdAndUserId(Long eventId, Long userId);
 }

@@ -107,7 +107,7 @@ spring:
         - id: event-service-write
           uri: lb://event-service
           predicates:
-            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{uId}/events, /users/{uId}/events/{eId}
+            - Path=/admin/categories/**, /admin/compilations/**, /admin/events/**, /admin/categories, /admin/compilations, /users/{uId}/events, /users/{uId}/events/{eId}, /events/**
         - id: request-service-write
           uri: lb://request-service
           predicates:
